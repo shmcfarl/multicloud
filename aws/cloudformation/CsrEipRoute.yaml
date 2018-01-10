@@ -1,0 +1,26 @@
+AWSTemplateFormatVersion: 2010-09-09
+Parameters:
+  StackName:
+    Description: >-
+      Name of an active CloudFormation stack that has the correct output
+      properties exported.
+    Type: String
+    MinLength: 1
+    MaxLength: 255
+    AllowedPattern: '^[a-zA-Z][-a-zA-Z0-9]*$'
+    Default: CsrStack
+Resources:
+  EipAssoc:
+    Type: 'AWS::EC2::EIPAssociation'
+    Properties:
+      NetworkInterfaceId: !ImportValue 
+        'Fn::Sub': '${StackName}-PublicNic'
+      AllocationId: <EXISTING_EIP_ALLOCATION_ID>
+  PrivateRouteTable:
+    Type: 'AWS::EC2::Route'
+    Properties:
+      DestinationCidrBlock: 192.168.200.0/24
+      RouteTableId: !ImportValue 
+        'Fn::Sub': '${StackName}-PrivateRoute'
+      NetworkInterfaceId: !ImportValue 
+        'Fn::Sub': '${StackName}-PrivateNic'
