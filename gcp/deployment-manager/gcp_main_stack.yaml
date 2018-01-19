@@ -1,0 +1,29 @@
+imports:
+- path: csr-gcp-01.jinja
+- path: gcp-client-vm.jinja
+- path: inside-network.jinja
+- path: inside-subnet.jinja
+- path: outside-firewall.jinja
+- path: inside-firewall.jinja
+- path: outside-route.jinja
+- path: inside-route.jinja
+
+resources: 
+- name: csr1
+  type: csr-gcp-01.jinja
+- name: vm1
+  type: gcp-client-vm.jinja
+- name: insidenetwork
+  type: inside-network.jinja
+- name: insidesubnet
+  type: inside-subnet.jinja
+- name: outsidefirewallrule
+  type: outside-firewall.jinja
+- name: insidefirewallrule
+  type: inside-firewall.jinja
+- name: outsideroute
+  type: outside-route.jinja
+- name: insideroute
+  type: inside-route.jinja
+
+

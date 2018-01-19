@@ -1,0 +1,9 @@
+resources:
+- name: outside-route
+  type: compute.v1.route
+  properties:
+    kind: compute#route
+    network: global/networks/default
+    destRange: 10.0.1.0/24
+    nextHopInstance: $(ref.csr-gcp-01.selfLink) 
+    priority: 900

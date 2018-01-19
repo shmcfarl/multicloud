@@ -1,0 +1,9 @@
+resources:
+- name: net-192-168-200-route
+  type: compute.v1.route
+  properties:
+    kind: compute#route
+    network: https://www.googleapis.com/compute/v1/projects/<PROJECT>/global/networks/inside-network
+    destRange: 192.168.200.0/24
+    nextHopIp: 10.0.1.2
+    priority: 900

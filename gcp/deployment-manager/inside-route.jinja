@@ -1,0 +1,9 @@
+resources:
+- name: inside-route
+  type: compute.v1.route
+  properties:
+    kind: compute#route
+    network: $(ref.inside-network.selfLink)
+    destRange: 10.138.0.0/16
+    nextHopInstance: $(ref.csr-gcp-01.selfLink)
+    priority: 900

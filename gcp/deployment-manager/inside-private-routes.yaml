@@ -1,0 +1,6 @@
+imports:
+- path: inside-private-routes.jinja
+
+resources:
+- name: privateroutes
+  type: inside-private-routes.jinja

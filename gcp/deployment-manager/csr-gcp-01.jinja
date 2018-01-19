@@ -1,0 +1,33 @@
+resources:
+- name: csr-gcp-01
+  type: compute.v1.instance
+  properties:
+    zone: <ZONE>
+    machineType: https://www.googleapis.com/compute/v1/projects/<PROJECT>/zones/<ZONE>/machineTypes/n1-standard-2
+    disks:
+    - type: PERSISTENT
+      deviceName: boot
+      boot: true
+      autoDelete: true
+      deviceName: csr-gcp-01
+      initializeParams:
+        sourceImage: https://www.googleapis.com/compute/beta/projects/<PROJECT>/global/images/<IMAGE>
+        diskType: https://www.googleapis.com/compute/v1/projects/<PROJECT>/zones/<ZONE>/diskTypes/pd-standard
+    canIpForward: true
+    networkInterfaces:
+    - network: global/networks/default
+      networkIP: 10.138.0.2
+      accessConfigs:
+      - name: External NAT
+        type: ONE_TO_ONE_NAT
+        natIP: <RESERVED EIP OR REMOVE LINE TO ALLOW FOR NEW EIP TO BE CREATED>
+    - network: $(ref.inside-network.selfLink)
+      subnetwork: $(ref.inside-subnet.selfLink)
+      networkIP: 10.0.1.2
+outputs:
+- name: csr-gcp-01
+  value: $(ref.csr-gcp-01.name)
+- name: CsrInsideIp
+  value: $(ref.csr-gcp-01.networkInterfaces[1].networkIP)
+
+  

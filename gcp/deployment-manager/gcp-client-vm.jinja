@@ -1,0 +1,22 @@
+resources:
+- name: gcp-client-vm
+  type: compute.v1.instance
+  properties:
+    zone: <ZONE>
+    machineType: https://www.googleapis.com/compute/v1/projects/<PROJECT>/zones/<ZONE>/machineTypes/n1-standard-1
+    disks:
+    - type: PERSISTENT
+      deviceName: boot
+      boot: true
+      autoDelete: true
+      initializeParams:
+        sourceImage: https://www.googleapis.com/compute/v1/projects/ubuntu-os-cloud/global/images/ubuntu-1604-xenial-v20180105
+        diskType: https://www.googleapis.com/compute/v1/projects/<PROJECT>/zones/<ZONE>/diskTypes/pd-standard
+    canIpForward: true
+    networkInterfaces:
+    - network: $(ref.inside-network.selfLink)
+      subnetwork: $(ref.inside-subnet.selfLink)
+      networkIP: 10.0.1.3
+      accessConfigs:
+      - name: External NAT
+        type: ONE_TO_ONE_NAT

@@ -1,0 +1,7 @@
+resources:
+- name: inside-subnet
+  type: compute.v1.subnetwork
+  properties:
+    region: us-west1
+    network: $(ref.inside-network.selfLink)
+    ipCidrRange: 10.0.1.0/24

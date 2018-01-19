@@ -1,0 +1,14 @@
+resources:
+- name: outside-firewall-rule-ingress
+  type: compute.v1.firewall
+  properties:
+    network: global/networks/default
+    direction: INGRESS
+    sourceRanges: ["0.0.0.0/0"]
+    allowed:
+    - IPProtocol: tcp
+      ports: ["22"]
+    - IPProtocol: udp
+      ports: ["500", "4500"]
+    - IPProtocol: 50
+    - IPProtocol: icmp

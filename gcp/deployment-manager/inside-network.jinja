@@ -1,0 +1,13 @@
+resources:
+- name: inside-network
+  type: compute.v1.network
+  properties:
+    routing-config:
+      routingMode: REGIONAL
+    name: inside-network
+    description: "VMs and CSR Inside Interface"
+    autoCreateSubnetworks: false
+    
+outputs:
+- name: inside-network
+  value: $(ref.inside-network.selfLink) 
