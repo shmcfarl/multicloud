@@ -107,7 +107,7 @@
                                 "ios-config-19=\"crypto ikev2 profile DMVPN-IKEv2-PROFILE\"\n",
                                 "ios-config-20=\"description PSK Profile\"\n",
                                 "ios-config-21=\"match identity remote address 0.0.0.0\"\n",
-                                "ios-config-22=\"identity local address <EIP_ADDRESS>\"\n",
+                                "ios-config-22=\"identity local address <EXTERNAL_IP>\"\n",
                                 "ios-config-23=\"authentication remote pre-share\"\n",
                                 "ios-config-24=\"authentication local pre-share\"\n",
                                 "ios-config-25=\"keyring local DMVPN-KEYRING\"\n",
