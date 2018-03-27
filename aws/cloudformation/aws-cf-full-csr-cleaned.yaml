@@ -1,0 +1,442 @@
+AWSTemplateFormatVersion: 2010-09-09
+##
+# Resources
+##
+Resources:
+  ##
+  # VPC Configuration
+  ##
+  VPC:
+    Type: 'AWS::EC2::VPC'
+    Properties:
+      EnableDnsSupport: 'true'
+      EnableDnsHostnames: 'true'
+      CidrBlock: !Ref BaseCIDR
+
+  InternetGateway:
+      Type: 'AWS::EC2::InternetGateway'
+      Properties: {}
+
+  VPCGatewayAttachment:
+    Type: 'AWS::EC2::VPCGatewayAttachment'
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+
+  # Private Network
+  PrivateSubnet:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Ref PrivateSubnetCIDR
+      AvailabilityZone: !Ref AvailabilityZone
+
+  PrivateNic:
+    Type: 'AWS::EC2::NetworkInterface'
+    Properties:
+      SourceDestCheck: 'false'
+      PrivateIpAddress: !Ref PrivateInterfaceIP
+      GroupSet:
+        - !Ref MulticloudCsrSecurityGroup
+      SubnetId: !Ref PrivateSubnet
+
+  PrivateRouteTable:
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      VpcId: !Ref VPC
+    DependsOn:
+      - InternetGateway
+
+  PrivateRoute1:
+    Type: 'AWS::EC2::Route'
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      RouteTableId: !Ref PrivateRouteTable
+      GatewayId: !Ref InternetGateway
+
+  PrivateRoute2:
+    Type: 'AWS::EC2::Route'
+    Properties:
+      DestinationCidrBlock: <DESTINATION_CIDR>
+      RouteTableId: !Ref PrivateRouteTable
+      NetworkInterfaceId: !Ref PrivateNic
+    DependsOn:
+      - PrivateNic
+
+  PrivSubnetRtAssocation:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      SubnetId: !Ref PrivateSubnet
+
+  # Public Network
+  PublicSubnet:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Ref PublicSubnetCIDR
+      AvailabilityZone: !Ref AvailabilityZone
+
+  PublicNic:
+    Type: 'AWS::EC2::NetworkInterface'
+    Properties:
+      SourceDestCheck: 'true'
+      PrivateIpAddress: !Ref PublicInterfaceIP
+      GroupSet:
+        - !Ref MulticloudCsrSecurityGroup
+      SubnetId: !Ref PublicSubnet
+
+  PublicRouteTable:
+      Type: 'AWS::EC2::RouteTable'
+      Properties:
+        VpcId: !Ref VPC
+      DependsOn:
+        - InternetGateway
+
+  PublicRoute1:
+    Type: 'AWS::EC2::Route'
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      RouteTableId: !Ref PublicRouteTable
+      GatewayId: !Ref InternetGateway
+
+  PubSubnetRtAssocation:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet
+
+  ##
+  # Security Group Configuration
+  ##
+  MulticloudCsrSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      VpcId: !Ref VPC
+      GroupDescription: Allows access for IPsec, SSH and ping traffic
+      SecurityGroupIngress:
+        # Encapsulating Security Payload (ESP)
+        - IpProtocol: '50'
+          CidrIp: 0.0.0.0/0
+        # UDP
+        - IpProtocol: udp
+          FromPort: '500'
+          ToPort: '500'
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: udp
+          FromPort: '4500'
+          ToPort: '4500'
+          CidrIp: 0.0.0.0/0
+        # ICMP
+        - IpProtocol: icmp
+          FromPort: '-1'
+          ToPort: '-1'
+          CidrIp: !Ref PrivateSubnetCIDR
+        - IpProtocol: icmp
+          FromPort: '-1'
+          ToPort: '-1'
+          CidrIp: <DESTINATION_CIDR>
+        # TCP
+        - IpProtocol: tcp
+          FromPort: '22'
+          ToPort: '22'
+          CidrIp: !Ref InboundSSH
+
+  ##
+  # EC2 Configuration
+  ##
+  MulticloudCSRInstance:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      InstanceType: !Ref InstanceType
+      ImageId: !FindInMap
+        - CiscoCsrAMI
+        - !Ref 'AWS::Region'
+        - !Ref LicenseModel
+      KeyName: !Ref KeyName
+      NetworkInterfaces:
+        - DeviceIndex: '0'
+          NetworkInterfaceId: !Ref PublicNic
+        - DeviceIndex: '1'
+          NetworkInterfaceId: !Ref PrivateNic
+      UserData: !Base64
+        'Fn::Join':
+          - ""
+          - - "ios-config-1=\"hostname "
+            - !Ref Hostname
+            - "\"\n"
+            - "ios-config-2=\"interface g2\"\n"
+            - "ios-config-3=\"description Inside\"\n"
+            - "ios-config-4=\"ip address dhcp\"\n"
+            - "ios-config-5=\"no shut\"\n"
+            - "ios-config-6=\"service password-encryption\"\n"
+            - "ios-config-8=\"crypto ikev2 proposal AES/GCM/256\"\n"
+            - "ios-config-9=\"encryption aes-gcm-256\"\n"
+            - "ios-config-10=\"prf sha512\"\n"
+            - "ios-config-11=\"group 19\"\n"
+            - "ios-config-12=\"crypto ikev2 policy AES/GCM/256\"\n"
+            - "ios-config-13=\"match fvrf any\"\n"
+            - "ios-config-14=\"proposal AES/GCM/256\"\n"
+            - "ios-config-15=\"crypto ikev2 keyring DMVPN-KEYRING\"\n"
+            - "ios-config-16=\"peer ANY\"\n"
+            - "ios-config-17=\"address 0.0.0.0 0.0.0.0\"\n"
+            - "ios-config-18=\"pre-shared-key <PSK_PASSWORD>\"\n"
+            - "ios-config-19=\"crypto ikev2 profile DMVPN-IKEv2-PROFILE\"\n"
+            - "ios-config-20=\"description PSK Profile\"\n"
+            - "ios-config-21=\"match identity remote address 0.0.0.0\"\n"
+            - "ios-config-23=\"authentication remote pre-share\"\n"
+            - "ios-config-24=\"authentication local pre-share\"\n"
+            - "ios-config-25=\"keyring local DMVPN-KEYRING\"\n"
+            - "ios-config-26=\"dpd 40 5 on-demand\"\n"
+            - "ios-config-27=\"crypto ipsec security-association replay window-size 1024\"\n"
+            - "ios-config-28=\"crypto ipsec transform-set AES256/GCM/TRANSFORM esp-gcm 256\"\n"
+            - "ios-config-29=\"mode transport\"\n"
+            - "ios-config-30=\"crypto ipsec profile DMVPN-IPSEC-PROFILE\"\n"
+            - "ios-config-31=\"set transform-set AES256/GCM/TRANSFORM\"\n"
+            - "ios-config-32=\"set ikev2-profile DMVPN-IKEv2-PROFILE\"\n"
+            - "ios-config-33=\"interface Tunnel0\"\n"
+            - "ios-config-34=\"description DMVPN\"\n"
+            - "ios-config-35=\"ip address <TUNNEL_IP> 255.255.255.0\"\n"
+            - "ios-config-36=\"no ip redirects\"\n"
+            - "ios-config-37=\"ip mtu 1400\"\n"
+            - "ios-config-38=\"ip nhrp authentication <PASSWORD>\"\n"
+            - "ios-config-39=\"ip nhrp network-id <NHRP_NETWORK_ID>\"\n"
+            - "ios-config-40=\"ip nhrp nhs <TUNNEL_IP_OF_HUB> nbma <ON_PREM_CSR_PUBLIC_IP> multicast\"\n"
+            - "ios-config-41=\"ip tcp adjust-mss 1360\"\n"
+            - "ios-config-42=\"ip ospf authentication-key 7 <OSPF_HASH>\"\n"
+            - "ios-config-43=\"ip ospf network point-to-multipoint\"\n"
+            - "ios-config-44=\"ip ospf hello-interval 10\"\n"
+            - "ios-config-45=\"tunnel source GigabitEthernet1\"\n"
+            - "ios-config-46=\"tunnel mode gre multipoint\"\n"
+            - "ios-config-47=\"tunnel key <TUNNEL_KEY>\"\n"
+            - "ios-config-48=\"tunnel protection ipsec profile DMVPN-IPSEC-PROFILE\"\n"
+            - "ios-config-49=\"router ospf <OSPF_ID>\"\n"
+            - "ios-config-50=\"router-id <TUNNEL_IP>\"\n"
+            - "ios-config-51=\"network 10.1.0.0 0.0.0.255 area <AREA_FOR_TUNNEL>\"\n"
+            - "ios-config-52=\"network 172.16.2.0 0.0.0.255 area <AREA_FOR_INSIDE_VPC_SUBNET>\"\n"
+    DependsOn:
+      - PublicRouteTable
+
+  ElasticIP:
+    Type: 'AWS::EC2::EIP'
+    Properties:
+      Domain: vpc
+    DependsOn: VPCGatewayAttachment
+
+  ElasticIPAssociation:
+    Type: 'AWS::EC2::EIPAssociation'
+    Properties:
+      NetworkInterfaceId: !Ref PublicNic
+      AllocationId: !GetAtt ElasticIP.AllocationId
+
+##
+# Metadata
+##
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "CSR 1000V Configuration"
+        Parameters:
+          - Hostname
+          - LicenseModel
+          - InstanceType
+          - AvailabilityZone
+          - KeyName
+          - InboundSSH
+      - Label:
+          default: "VPC Configuration"
+        Parameters:
+          - BaseCIDR
+          - PrivateSubnetCIDR
+          - PrivateInterfaceIP
+          - PublicSubnetCIDR
+          - PublicInterfaceIP
+    ParameterLabels:
+      LicenseModel:
+        default: "License model"
+      InstanceType:
+        default: "Instance type"
+      AvailabilityZone:
+        default: "Availability zone"
+      KeyName:
+        default: "Key pair name"
+      InboundSSH:
+        default: "SSH inbound"
+      BaseCIDR:
+        default: "Base CIDR"
+      PrivateSubnetCIDR:
+        default: "Private subnet CIDR"
+      PrivateInterfaceIP:
+        default: "Private interface IP"
+      PublicSubnetCIDR:
+        default: "Public subnet CIDR"
+      PublicInterfaceIP:
+        default: "Public interface IP"
+##
+# Parameters
+##
+Parameters:
+  # CSR 1000V Configuration
+  Hostname:
+    Description: The hostname of the CSR 1000V instance
+    Type: String
+    Default: multicloud-csr-01
+
+  LicenseModel:
+    Description: >-
+      Choose between a Bring Your Own License (BYOL) or License Included
+      model. Remember to first subscribe to the appropriate Marketplace AMI!
+    Type: String
+    Default: BYOL
+    AllowedValues:
+      - BYOL
+      - Included
+
+  InstanceType:
+    Description: The EC2 instance type to use for the CSR 1000V
+    Type: String
+    Default: t2.medium
+    AllowedValues:
+      - t2.medium
+      - m3.medium
+      - c3.xlarge
+      - c4.large
+      - c4.xlarge
+      - c4.2xlarge
+      - c4.4xlarge
+      - c4.8xlarge
+    ConstraintDescription: Must be a supported EC2 instance type for the CSR 1000V
+
+  AvailabilityZone:
+    Type: 'AWS::EC2::AvailabilityZone::Name'
+    Description: The EC2 availability zone to use
+    Default: us-west-1b
+
+  KeyName:
+    Type: 'AWS::EC2::KeyPair::KeyName'
+    Description: The EC2 key pair name used to enable SSH access to the instance
+    Default: multicloud_rsa
+
+  InboundSSH:
+    Description: The IP address range that is allowed to access the CSR instance via SSH
+    Type: String
+    MinLength: '9'
+    MaxLength: '18'
+    Default: 0.0.0.0/0
+    AllowedPattern: '(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})'
+    ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x.
+
+  # VPC Configuration
+  BaseCIDR:
+    Description: The base CIDR for the created VPC
+    Type: String
+    MinLength: '9'
+    MaxLength: '18'
+    Default: 172.16.0.0/16
+    AllowedPattern: '(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})'
+    ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x
+
+  PrivateSubnetCIDR:
+    Description: The CIDR for the private subnet of the created VPC
+    Type: String
+    MinLength: '9'
+    MaxLength: '18'
+    Default: 172.16.2.0/24
+    AllowedPattern: '(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})'
+    ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x
+
+  PrivateInterfaceIP:
+    Description: The IP address to assign to the private network interface
+    Type: String
+    MinLength: '7'
+    MaxLength: '15'
+    Default: 172.16.2.10
+    AllowedPattern: '(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})'
+    ConstraintDescription: Must be a valid IP address of the form x.x.x.x
+
+  PublicSubnetCIDR:
+    Description: The CIDR for the public subnet of the created VPC
+    Type: String
+    MinLength: '9'
+    MaxLength: '18'
+    Default: 172.16.1.0/24
+    AllowedPattern: '(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})'
+    ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x
+
+  PublicInterfaceIP:
+    Description: The IP address to assign to the public network interface
+    Type: String
+    MinLength: '7'
+    MaxLength: '15'
+    Default: 172.16.1.10
+    AllowedPattern: '(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})'
+    ConstraintDescription: Must be a valid IP address of the form x.x.x.x
+
+##
+# Mappings
+##
+# TODO: Update for correct AMIs across all regions
+Mappings:
+  CiscoCsrAMI:
+    us-west-1:
+      BYOL: ami-99e5d0f9
+      Included: ami-99e5d0f9
+  AWSInstanceType2Arch:
+    t2.medium:
+      Arch: HVM64
+    m3.medium:
+      Arch: HVM64
+    c3.xlarge:
+      Arch: HVM64
+    c4.large:
+      Arch: HVM64
+    c4.xlarge:
+      Arch: HVM64
+    c4.2xlarge:
+      Arch: HVM64
+    c4.4xlarge:
+      Arch: HVM64
+    c4.8xlarge:
+      Arch: HVM64
+  AWSRegionArch2AMI:
+    us-east-1:
+      PV64: ami-1ccae774
+      HVM64: ami-1ecae776
+      HVMG2: ami-8c6b40e4
+    us-west-2:
+      PV64: ami-ff527ecf
+      HVM64: ami-e7527ed7
+      HVMG2: ami-abbe919b
+    us-west-1:
+      PV64: ami-d514f291
+      HVM64: ami-d114f295
+      HVMG2: ami-f31ffeb7
+    eu-west-1:
+      PV64: ami-bf0897c8
+      HVM64: ami-a10897d6
+      HVMG2: ami-d5bc24a2
+    eu-central-1:
+      PV64: ami-ac221fb1
+      HVM64: ami-a8221fb5
+      HVMG2: ami-7cd2ef61
+    ap-northeast-1:
+      PV64: ami-27f90e27
+      HVM64: ami-cbf90ecb
+      HVMG2: ami-6318e863
+    ap-southeast-1:
+      PV64: ami-acd9e8fe
+      HVM64: ami-68d8e93a
+      HVMG2: ami-3807376a
+    ap-southeast-2:
+      PV64: ami-ff9cecc5
+      HVM64: ami-fd9cecc7
+      HVMG2: ami-89790ab3
+    sa-east-1:
+      PV64: ami-bb2890a6
+      HVM64: ami-b52890a8
+      HVMG2: NOT_SUPPORTED
+    cn-north-1:
+      PV64: ami-fa39abc3
+      HVM64: ami-f239abcb
+      HVMG2: NOT_SUPPORTED
