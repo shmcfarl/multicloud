@@ -8,7 +8,7 @@ resources:
     zone: {{ properties['zone'] }}
     cluster:
       name: {{ properties['gkeClusterName'] }}
-      initialClusterVersion: 1.10.2-gke.3
+      initialClusterVersion: 1.9.6-gke.1
       legacyAbac:
         enabled: false
       initialNodeCount: {{ properties['initialNodeCount'] }}
@@ -75,7 +75,7 @@ resources:
       autoDelete: true
       initializeParams:
         diskName: {{ CLUSTER_NAME }}-vm-disk
-        sourceImage: https://www.googleapis.com/compute/v1/projects/debian-cloud/global/images/debian-8-jessie-v20171018
+        sourceImage: https://www.googleapis.com/compute/v1/projects/debian-cloud/global/images/debian-8-jessie-v20171129
     metadata:
       items:
       - key: startup-script
@@ -101,8 +101,8 @@ resources:
             {% if properties['installIstioRelease'] == "0.7.1" %}
               # Note that the original 0.7.1-tagged version of this script had
               # a timing bug; here we pull one commit later.
-              curl -s https://raw.githubusercontent.com/istio/istio/41203341818c4dada2ea5385cfedc7859c01e957/install/kubernetes/webhook-create-signed-cert.sh -o ./install/kubernetes/webhook-create-signed-cert.sh && chmod +x ./install/kubernetes/webhook-create-signed-cert.sh
-              curl -s https://raw.githubusercontent.com/istio/istio/0.7.1/install/kubernetes/webhook-patch-ca-bundle.sh -o ./install/kubernetes/webhook-patch-ca-bundle.sh && chmod +x ./install/kubernetes/webhook-patch-ca-bundle.sh
+              #curl -s https://raw.githubusercontent.com/istio/istio/41203341818c4dada2ea5385cfedc7859c01e957/install/kubernetes/webhook-create-signed-cert.sh -o ./install/kubernetes/webhook-create-signed-cert.sh && chmod +x ./install/kubernetes/webhook-create-signed-cert.sh
+              #curl -s https://raw.githubusercontent.com/istio/istio/0.7.1/install/kubernetes/webhook-patch-ca-bundle.sh -o ./install/kubernetes/webhook-patch-ca-bundle.sh && chmod +x ./install/kubernetes/webhook-patch-ca-bundle.sh
 
             {% endif %}
 
