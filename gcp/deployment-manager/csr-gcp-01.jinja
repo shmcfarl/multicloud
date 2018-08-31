@@ -11,7 +11,7 @@ resources:
       autoDelete: true
       deviceName: csr-gcp-01
       initializeParams:
-        sourceImage: https://www.googleapis.com/compute/beta/projects/<PROJECT>/global/images/<IMAGE>
+        sourceImage: https://www.googleapis.com/compute/beta/projects/<PROJECT>/global/images/<CSR_image>
         diskType: https://www.googleapis.com/compute/v1/projects/<PROJECT>/zones/<ZONE>/diskTypes/pd-standard
     canIpForward: true
     networkInterfaces:
@@ -20,10 +20,16 @@ resources:
       accessConfigs:
       - name: External NAT
         type: ONE_TO_ONE_NAT
-        natIP: <RESERVED EIP OR REMOVE LINE TO ALLOW FOR NEW EIP TO BE CREATED>
+        natIP: <EXTERNAL_IP>
     - network: $(ref.inside-network.selfLink)
       subnetwork: $(ref.inside-subnet.selfLink)
       networkIP: 10.0.1.2
+    metadata:
+      items:
+        - key: ssh-keys
+          value: |
+          # The key format is <user_id>:ssh-rsa <SSH_KEY> <trailing_user/machine_info_from_ssh_pub_file>. Example entry below.
+          jdoe:ssh-rsa this_is_the_key_section jdoe@my_machine_name
 outputs:
 - name: csr-gcp-01
   value: $(ref.csr-gcp-01.name)

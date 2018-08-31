@@ -1,0 +1,9 @@
+resources:
+- name: outside-network
+  type: compute.v1.network
+  properties:
+    routing-config:
+      routingMode: REGIONAL
+    name: outside-network
+    description: "Machine to host linux vm and CSR interface 10.138.0.2"
+    autoCreateSubnetworks: false

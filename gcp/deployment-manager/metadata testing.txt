@@ -1,0 +1,29 @@
+    metadata:
+      items:
+      - key: startup-script
+        value: |
+          enable
+          interface g2
+          description Inside
+          exit
+
+
+  
+  
+  
+  
+gcloud compute instances create "csr-gcp-01" \
+--zone "<ZONE>" \
+--machine-type "n1-standard-4" \
+--network-interface subnet="outside-subnet",private-network-ip="10.138.0.2",address="35.227.156.72" \
+--can-ip-forward \
+--network-interface subnet="inside-subnet",private-network-ip="10.0.1.2",no-address \
+--image "csr-ssh-006" \
+--image-project "cisco-001" \
+--boot-disk-size "10" \
+--boot-disk-type "pd-standard" \
+--boot-disk-device-name "csr-gcp-01" \
+--metadata-from-file startup-script='
+enable
+hostname TEST
+EOF'

@@ -25,5 +25,3 @@ resources:
   type: outside-route.jinja
 - name: insideroute
   type: inside-route.jinja
-
-

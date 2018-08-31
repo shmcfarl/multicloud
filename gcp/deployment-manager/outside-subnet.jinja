@@ -1,0 +1,7 @@
+resources:
+- name: outside-subnet
+  type: compute.v1.subnetwork
+  properties:
+    region: us-west1 
+    network: $(ref.outside-network.selfLink)
+    ipCidrRange: 10.138.0.0/16
